@@ -29,7 +29,8 @@ const app = Vue.createApp({
         id_platillo: '',
         cantidad: 1,
         nota: ''
-      }
+      },
+      enviarCocinaBarra: false // Por defecto NO enviar a cocina/barra
     }
   },  
   computed: {    
@@ -384,6 +385,12 @@ const app = Vue.createApp({
     cerrarModal() {
       this.formaPago = 'efectivo';
       this.tipoDoc = '';
+    },
+
+    imprimirPreticket(idPedido) {
+      // Abrir pre-ticket directamente sin confirmación
+      const preticketUrl = BASE_URL + `api/reportes/preticket/${idPedido}`;
+      window.open(preticketUrl, '_blank', 'width=400,height=600,scrollbars=yes,resizable=yes');
     },
 
     reimprimirTicket(idPedido) {
@@ -863,7 +870,9 @@ const app = Vue.createApp({
                   id_platillo: item.id_platillo,
                   cantidad: item.cantidad,
                   nota: item.nota,
-                  preparado: 0 // Por defecto, no preparado.
+                  // Si enviarCocinaBarra está marcado: preparado=0 (pendiente)
+                  // Si NO está marcado: preparado=3 (ya listo, no va a cocina/barra)
+                  preparado: this.enviarCocinaBarra ? 0 : 3
                 };
                 
                 return axios.post(BASE_URL + "api/item_pedidos", nuevoItem)
@@ -936,6 +945,7 @@ const app = Vue.createApp({
         cantidad: 1,
         nota: ''
       };
+      this.enviarCocinaBarra = false; // Resetear a false por defecto
     },
     
     // Actualizar información del platillo seleccionado

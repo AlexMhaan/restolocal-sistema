@@ -43,6 +43,7 @@ $routes->get('api/reportes/generarRespaldo', 'Api\Reportes::generarRespaldo'); /
 $routes->get('api/reportes/exportarExcel', 'Api\Reportes::exportarExcel'); // Exportar a Excel (facturas/tickets)
 $routes->get('api/reportes/resumenFinalizarDia', 'Api\Reportes::resumenFinalizarDia'); // Preview Finalizar Día
 $routes->post('api/reportes/finalizarDia', 'Api\Reportes::finalizarDia'); // Finalizar Día
+$routes->get('api/reportes/preticket/(:num)', 'Api\Reportes::preticket/$1'); // Pre-ticket sin marca de pagado
 $routes->get('api/reportes/ticket/(:num)', 'Api\Reportes::generarTicket/$1'); // Nueva ruta para generar tickets
 $routes->resource('api/reportes'); // Resource al final para no sobrescribir rutas específicas
 

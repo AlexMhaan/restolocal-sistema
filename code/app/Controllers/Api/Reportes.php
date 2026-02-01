@@ -631,9 +631,37 @@ class Reportes extends ResourceController
     }
     
     /**
+     * Genera un PRE-TICKET (sin marca de pagado, sin valor fiscal)
+     * GET /api/reportes/preticket/{id_pedido}
+     * 
+     * Este endpoint se usa ANTES de cobrar para que el mesero
+     * pueda mostrar al cliente cuánto debe pagar.
+     * NO modifica el estado del pedido ni crea reporte fiscal.
+     */
+    public function preticket($id_pedido = null)
+    {
+        try {
+            if ($id_pedido === null) {
+                $id_pedido = $this->request->getVar('id');
+            }
+            
+            if (!$id_pedido || $id_pedido <= 0) {
+                return $this->fail('ID de pedido inválido');
+            }
+            
+            // Llamar a generarTicket con flag de pre-ticket
+            return $this->generarTicket($id_pedido, true);
+            
+        } catch (\Exception $e) {
+            log_message('error', '[Reportes/preticket] Error: ' . $e->getMessage());
+            return $this->fail('Error al generar el pre-ticket: ' . $e->getMessage());
+        }
+    }
+    
+    /**
      * Genera el ticket HTML para impresión
      */
-    public function generarTicket($id_pedido = null)
+    public function generarTicket($id_pedido = null, $es_preticket = false)
     {
         try {
             if ($id_pedido === null) {
@@ -649,7 +677,7 @@ class Reportes extends ResourceController
             // Consultar datos del pedido con el mesero y el reporte asociado
             $query = $db->query("
                 SELECT p.*, u.nombre as nombre_mesero, u.apellido as apellido_mesero,
-                       r.numero as numero_reporte, r.tipo as tipo_reporte
+                       r.numero as numero_reporte, r.tipo as tipo_reporte, r.fecha as fecha_reporte
                 FROM pedidos p 
                 LEFT JOIN usuarios u ON p.id_mesero = u.id 
                 LEFT JOIN reportes r ON r.id_pedido = p.id AND r.estado = 'emitido'
@@ -685,10 +713,16 @@ class Reportes extends ResourceController
             $total_texto = $this->numeroALetras($total);
             
             // Formatear fecha
-            $fecha_formateada = date('n/j/Y, g:i:s A', strtotime($pedido['fecha']));
+            // Si NO es pre-ticket y existe fecha_reporte, usar esa (fecha del cobro)
+            // Si es pre-ticket o no hay reporte, usar fecha del pedido (fecha de creación)
+            if (!$es_preticket && isset($pedido['fecha_reporte']) && !empty($pedido['fecha_reporte'])) {
+                $fecha_formateada = date('n/j/Y, g:i:s A', strtotime($pedido['fecha_reporte']));
+            } else {
+                $fecha_formateada = date('n/j/Y, g:i:s A', strtotime($pedido['fecha']));
+            }
             
             // Generar el HTML del ticket
-            $html = $this->generarHtmlTicket($pedido, $items, $total, $total_texto, $fecha_formateada, $id_pedido);
+            $html = $this->generarHtmlTicket($pedido, $items, $total, $total_texto, $fecha_formateada, $id_pedido, $es_preticket);
             
             // Retornar como respuesta HTML
             return $this->response->setContentType('text/html')->setBody($html);
@@ -701,11 +735,27 @@ class Reportes extends ResourceController
     
     /**
      * Genera el HTML del ticket usando archivo separado en Views/components
+     * 
+     * @param array $pedido Datos del pedido
+     * @param array $items Items del pedido
+     * @param float $total Total del pedido
+     * @param string $total_texto Total en letras
+     * @param string $fecha_formateada Fecha formateada
+     * @param int $id_pedido ID del pedido
+     * @param bool $es_preticket Si es un pre-ticket (sin marca de pagado)
      */
-    private function generarHtmlTicket($pedido, $items, $total, $total_texto, $fecha_formateada, $id_pedido)
+    private function generarHtmlTicket($pedido, $items, $total, $total_texto, $fecha_formateada, $id_pedido, $es_preticket = false)
     {
         // Determinar el número de ticket a mostrar según el tipo
         $numero_ticket = $id_pedido; // Por defecto usar ID del pedido
+        
+        // Determinar si el pedido está pagado
+        // Si es pre-ticket, forzar a NO pagado
+        // Si NO es pre-ticket, verificar: 1) que tenga reporte O 2) que el pedido tenga estado = 2 (pagado)
+        $esta_pagado = !$es_preticket && (
+            (isset($pedido['numero_reporte']) && !empty($pedido['numero_reporte'])) || 
+            (isset($pedido['estado']) && $pedido['estado'] == 2)
+        );
         
         // Si existe información del reporte, usar su lógica
         if (isset($pedido['tipo_reporte']) && isset($pedido['numero_reporte'])) {
@@ -732,7 +782,9 @@ class Reportes extends ResourceController
             'total_texto' => $total_texto,
             'fecha_formateada' => $fecha_formateada,
             'id_pedido' => $id_pedido,
-            'numero_ticket' => $numero_ticket
+            'numero_ticket' => $numero_ticket,
+            'esta_pagado' => $esta_pagado,
+            'es_preticket' => $es_preticket
         ];
         
         // Usar el helper view() de CodeIgniter para cargar la vista
