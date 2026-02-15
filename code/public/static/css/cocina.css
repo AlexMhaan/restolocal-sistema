@@ -1,0 +1,51 @@
+.platillo
+{
+  background: #e5e5e5;
+  padding: 10px;
+  margin: 3px;
+  border-radius: 15px;
+  font-size: 28px;
+}
+
+/* Estilo fantasma para platillos entregados */
+.platillo-entregado
+{
+  background: #d3d3d3 !important;
+  opacity: 0.6;
+  color: #666;
+  position: relative;
+}
+
+.platillo-entregado .nombrePlatillo {
+  color: #888;
+}
+
+.platillo-entregado .cantidad {
+  background: #f0f0f0;
+  color: #999;
+}
+
+.cantidad
+{
+    background: white;
+    width: 50px;
+    display: inline-block;
+    text-align: center;
+    border-radius: 15px;
+    margin-right: 10px;
+}
+
+.nota
+{
+  font-size: 18px;
+  background: #ebffb1;
+  margin: 5px 0 0 0;
+  border-radius: 15px;
+  padding: 5px;
+}
+
+.btns
+{
+    display: inline-block;
+    text-align: center;
+}

@@ -424,5 +424,97 @@
           </div>
         </div>
       </div>
+
+      <!-- Botón toggle Corte X -->
+      <button class="btn btn-primary position-fixed shadow-lg" 
+              style="right: 20px; top: 100px; z-index: 999; border-radius: 50%; width: 60px; height: 60px;"
+              @click="toggleCorteX"
+              title="Corte X - Reporte del día">
+        <i class="bi bi-bar-chart-line" style="font-size: 1.5rem;"></i>
+      </button>
+
+      <!-- Backdrop para el sidebar -->
+      <div v-show="corteXVisible" 
+           @click="toggleCorteX"
+           class="position-fixed" 
+           style="top: 0; left: 0; width: 100%; height: 100vh; background: rgba(0,0,0,0.3); z-index: 1040;"></div>
+
+      <!-- Sidebar Corte X -->
+      <div v-show="corteXVisible" 
+           class="position-fixed bg-white shadow-lg rounded" 
+           style="right: 20px; top: 80px; width: 320px; max-height: 70vh; z-index: 1045; overflow-y: auto; border: 2px solid #0d6efd; transition: transform 0.3s ease;"
+           :style="{ transform: corteXVisible ? 'translateX(0)' : 'translateX(100%)' }">
+        
+        <!-- Header -->
+        <div class="bg-primary text-white p-3 d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">
+            <i class="bi bi-receipt-cutoff me-2"></i>CORTE X
+          </h5>
+          <button class="btn btn-sm btn-light" @click="toggleCorteX">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <!-- Contenido -->
+        <div class="p-3">
+          <!-- Fecha -->
+          <div class="mb-3">
+            <label class="form-label text-muted small mb-1">FECHA</label>
+            <div class="fs-6 fw-bold">{{ corteXData.fecha || '-' }}</div>
+          </div>
+
+          <hr>
+
+          <!-- Número de tickets -->
+          <div class="mb-3">
+            <label class="form-label text-muted small mb-1">
+              <i class="bi bi-receipt me-1"></i>TICKETS EMITIDOS
+            </label>
+            <div class="fs-4 fw-bold text-primary">{{ corteXData.tickets || 0 }}</div>
+          </div>
+
+          <hr>
+
+          <!-- Subtotal -->
+          <div class="mb-3">
+            <label class="form-label text-muted small mb-1">SUBTOTAL</label>
+            <div class="fs-5 fw-bold">${{ (corteXData.subtotal || 0).toFixed(2) }}</div>
+          </div>
+
+          <!-- IVA -->
+          <div class="mb-3">
+            <label class="form-label text-muted small mb-1">IVA (16%)</label>
+            <div class="fs-5 fw-bold text-info">${{ (corteXData.iva || 0).toFixed(2) }}</div>
+          </div>
+
+          <!-- Total -->
+          <div class="mb-3 p-3 bg-success bg-opacity-10 rounded">
+            <label class="form-label text-muted small mb-1">TOTAL</label>
+            <div class="fs-3 fw-bold text-success">${{ (corteXData.total || 0).toFixed(2) }}</div>
+          </div>
+
+          <!-- Mensaje cuando no hay ventas -->
+          <div v-if="corteXData.tickets === 0" class="alert alert-warning small mb-3">
+            <i class="bi bi-info-circle me-1"></i>
+            No hay ventas registradas para esta fecha
+          </div>
+
+          <hr>
+
+          <!-- Última actualización -->
+          <div class="mb-3">
+            <label class="form-label text-muted small mb-1">
+              <i class="bi bi-clock me-1"></i>ÚLTIMA ACTUALIZACIÓN
+            </label>
+            <div class="fs-6">{{ corteXData.ultima_actualizacion || '-' }}</div>
+          </div>
+
+          <!-- Botón actualizar manual -->
+          <button class="btn btn-outline-primary w-100" @click="obtenerCorteX">
+            <i class="bi bi-arrow-clockwise me-2"></i>Actualizar Ahora
+          </button>
+        </div>
+      </div>
+
     </div>
   </div>

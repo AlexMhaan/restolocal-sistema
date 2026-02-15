@@ -30,7 +30,18 @@ const app = Vue.createApp({
         cantidad: 1,
         nota: ''
       },
-      enviarCocinaBarra: false // Por defecto NO enviar a cocina/barra
+      enviarCocinaBarra: false, // Por defecto NO enviar a cocina/barra
+      // Propiedades para Corte X sidebar
+      corteXVisible: false,
+      corteXData: {
+        fecha: '',
+        tickets: 0,
+        subtotal: 0,
+        iva: 0,
+        total: 0,
+        ultima_actualizacion: ''
+      },
+      intervaloCorteX: null
     }
   },  
   computed: {    
@@ -145,6 +156,8 @@ const app = Vue.createApp({
     actualizarListado() {
       console.log('Actualizando listado...');
       this.listarPlatillosCocina();
+      // Actualizar Corte X cuando cambia el filtro de fecha
+      this.obtenerCorteX();
     },
     
     calcularTotalPedido(platillos) {
@@ -299,6 +312,9 @@ const app = Vue.createApp({
             this.formaPago = 'efectivo';
             this.tipoDoc = '';
             this.actualizarListado();
+            
+            // Actualizar Corte X después de cobrar
+            this.obtenerCorteX();
           })
           .catch(error => {
             console.error("Error details:", {
@@ -1062,7 +1078,40 @@ const app = Vue.createApp({
           // Si falla el logout, redirigir de todos modos
           window.location.href = BASE_URL;
         });
-    } 
+    },
+
+    // Toggle del sidebar Corte X
+    toggleCorteX() {
+      this.corteXVisible = !this.corteXVisible;
+    },
+
+    // Obtener datos del Corte X
+    obtenerCorteX() {
+      // Usar la fecha del filtro actual
+      const fechaParam = this.fechaFiltro || new Date().toISOString().split('T')[0];
+      console.log('[Corte X] Obteniendo datos para fecha:', fechaParam);
+      
+      axios.get(`${BASE_URL}api/reportes/corteX?fecha=${fechaParam}`)
+        .then(response => {
+          console.log('[Corte X] Respuesta del servidor:', response.data);
+          if (response.data) {
+            this.corteXData = response.data;
+            console.log('[Corte X] Datos actualizados:', this.corteXData);
+          }
+        })
+        .catch(error => {
+          console.error("[Corte X] Error al obtener datos:", error);
+          if (error.response) {
+            console.error('[Corte X] Respuesta de error:', error.response.data);
+          }
+        });
+    },
+
+    // Formatear moneda (helper)
+    formatearMoneda(valor) {
+      if (!valor) return '0.00';
+      return parseFloat(valor).toFixed(2);
+    }
   }, 
     
   mounted: function() {
@@ -1072,12 +1121,21 @@ const app = Vue.createApp({
     this.intervaloActualizacion = setInterval(() => {
       this.listarPlatillosCocina();
     }, 60000);
+
+    // Inicializar Corte X
+    this.obtenerCorteX(); // Carga inicial
+    this.intervaloCorteX = setInterval(() => {
+      this.obtenerCorteX(); // Auto-refresh cada 30 segundos
+    }, 30000);
   },
 
   // Limpiar el intervalo cuando el componente se destruye
   unmounted: function() {
     if (this.intervaloActualizacion) {
       clearInterval(this.intervaloActualizacion);
+    }
+    if (this.intervaloCorteX) {
+      clearInterval(this.intervaloCorteX);
     }
   }
 });

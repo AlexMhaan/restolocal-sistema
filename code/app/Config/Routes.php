@@ -39,6 +39,7 @@ $routes->get('api/reportes/buscarTicket', 'Api\Reportes::buscarPorNumeroTicket')
 $routes->get('api/reportes/buscarPorPedido', 'Api\Reportes::buscarPorPedido');
 $routes->get('api/reportes/conDetallesPedido', 'Api\Reportes::conDetallesPedido');
 $routes->get('api/reportes/corteHistoria', 'Api\Reportes::corteHistoria'); // Nueva ruta para Corte Historia
+$routes->get('api/reportes/corteX', 'Api\Reportes::corteX'); // Corte X - Totales del día en tiempo real
 $routes->get('api/reportes/generarRespaldo', 'Api\Reportes::generarRespaldo'); // Nueva ruta para Respaldo
 $routes->get('api/reportes/exportarExcel', 'Api\Reportes::exportarExcel'); // Exportar a Excel (facturas/tickets)
 $routes->get('api/reportes/resumenFinalizarDia', 'Api\Reportes::resumenFinalizarDia'); // Preview Finalizar Día

@@ -275,6 +275,74 @@ class Reportes extends ResourceController
         }
     }
     
+    /**
+     * Corte X - Resumen de ventas en tiempo real
+     * GET /api/reportes/corteX?fecha=YYYY-MM-DD
+     */
+    public function corteX()
+    {
+        try {
+            $fecha = $this->request->getVar('fecha') ?: date('Y-m-d');
+            
+            // Validar formato de fecha
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
+                return $this->fail('Formato de fecha inválido. Use YYYY-MM-DD');
+            }
+            
+            $db = \Config\Database::connect();
+            
+            // Primero verificar qué registros hay para debug
+            $debugQuery = $db->query("
+                SELECT estado, tipo, COUNT(*) as count
+                FROM reportes
+                WHERE DATE(fecha) = ?
+                GROUP BY estado, tipo
+            ", [$fecha]);
+            $debug = $debugQuery->getResultArray();
+            log_message('info', '[Reportes/corteX] Registros encontrados para fecha ' . $fecha . ': ' . json_encode($debug));
+            
+            // Obtener totales de reportes emitidos del día
+            // Hacemos el filtro más flexible para capturar variaciones en el tipo
+            $query = $db->query("
+                SELECT 
+                    COUNT(*) as cantidad_tickets,
+                    SUM(total_pedido) as total_general
+                FROM reportes
+                WHERE DATE(fecha) = ?
+                  AND estado = 'emitido'
+                  AND (tipo LIKE '%ticket%' OR tipo LIKE '%factura%')
+            ", [$fecha]);
+            
+            $resultado = $query->getRowArray();
+            
+            // Log para debug
+            log_message('info', '[Reportes/corteX] Resultado query: ' . json_encode($resultado));
+            
+            // Calcular subtotal e IVA (asumiendo que el total incluye IVA del 16%)
+            $totalGeneral = (float)($resultado['total_general'] ?? 0);
+            $subtotal = $totalGeneral > 0 ? $totalGeneral / 1.16 : 0;
+            $iva = $totalGeneral - $subtotal;
+            
+            $response = [
+                'fecha' => $fecha,
+                'tickets' => (int)($resultado['cantidad_tickets'] ?? 0),
+                'subtotal' => round($subtotal, 2),
+                'iva' => round($iva, 2),
+                'total' => round($totalGeneral, 2),
+                'ultima_actualizacion' => date('Y-m-d H:i:s'),
+                'debug' => $debug // Incluir info de debug para diagnóstico
+            ];
+            
+            log_message('info', '[Reportes/corteX] Respuesta: ' . json_encode($response));
+            
+            return $this->respond($response);
+            
+        } catch (\Exception $e) {
+            log_message('error', '[Reportes/corteX] Error: ' . $e->getMessage());
+            return $this->fail($e->getMessage());
+        }
+    }
+    
     // Método para buscar reporte por id_pedido
     public function buscarPorPedido()
     {
