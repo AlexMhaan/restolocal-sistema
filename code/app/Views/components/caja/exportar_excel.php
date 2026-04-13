@@ -13,39 +13,14 @@
   <div class="card-body">
     <div class="row g-3">
       
-      <!-- Filtro: Fecha Inicio -->
-      <div class="col-md-4">
-        <label class="form-label fw-bold">Fecha Inicio</label>
-        <input 
-          type="date" 
-          class="form-control" 
-          v-model="exportExcel.fechaInicio"
-          :max="exportExcel.fechaFin || new Date().toISOString().split('T')[0]"
-        >
-        <small class="text-muted">Opcional - Desde cuándo</small>
-      </div>
-      
-      <!-- Filtro: Fecha Fin -->
-      <div class="col-md-4">
-        <label class="form-label fw-bold">Fecha Fin</label>
-        <input 
-          type="date" 
-          class="form-control" 
-          v-model="exportExcel.fechaFin"
-          :min="exportExcel.fechaInicio"
-          :max="new Date().toISOString().split('T')[0]"
-        >
-        <small class="text-muted">Opcional - Hasta cuándo</small>
-      </div>
-      
       <!-- Botones de Descarga -->
-      <div class="col-md-4">
-        <label class="form-label fw-bold">Descargar</label>
+      <div class="col-12 d-flex flex-column align-items-center">
+        <label class="form-label fw-bold">Descargar registros de hoy</label>
         <div class="d-flex gap-2">
           <!-- Botón Facturas -->
           <button 
             type="button" 
-            class="btn btn-primary flex-fill"
+            class="btn btn-primary"
             @click="descargarExcelFacturas"
             :disabled="exportExcel.descargando"
           >
@@ -62,7 +37,7 @@
           <!-- Botón Tickets Electrónicos -->
           <button 
             type="button" 
-            class="btn btn-info text-white flex-fill"
+            class="btn btn-info text-white"
             @click="descargarExcelTickets"
             :disabled="exportExcel.descargando"
           >
@@ -85,7 +60,7 @@
       <i class="bi bi-info-circle"></i>
       <strong>Formato del archivo:</strong> NUMERO DE FOLIO, FECHA, HORA, CONSECUTIVO, SUBTOTAL, IVA, TOTAL
       <br>
-      <small>Si no seleccionas fechas, se exportarán todos los registros.</small>
+      <small>Se exportan únicamente los registros del día de hoy.</small>
     </div>
     
     <!-- Mensaje de resultado -->

@@ -30,15 +30,24 @@
         <input type="number" class="form-control" v-model.number="corteHistoria.filtros.folio_fin" placeholder="Ej: 120" min="0">
       </div>
       
-      <!-- Filtro de Tipo -->
+      <!-- Filtro de Tipo (selección múltiple) -->
       <div class="col-md-2">
         <label class="form-label">Tipo</label>
-        <select class="form-select" v-model="corteHistoria.filtros.tipo">
-          <option value="">Todos</option>
-          <option value="ticket">Ticket</option>
-          <option value="factura">Factura</option>
-          <option value="ticket electronico">Ticket Electrónico</option>
-        </select>
+        <div class="border rounded p-2 bg-white">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="tipo-ticket" value="ticket" v-model="corteHistoria.filtros.tipos">
+            <label class="form-check-label" for="tipo-ticket">Ticket</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="tipo-factura" value="factura" v-model="corteHistoria.filtros.tipos">
+            <label class="form-check-label" for="tipo-factura">Factura</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="tipo-electronico" value="ticket electronico" v-model="corteHistoria.filtros.tipos">
+            <label class="form-check-label" for="tipo-electronico">T. Electrónico</label>
+          </div>
+        </div>
+        <small class="text-muted">Sin selección = Todos</small>
       </div>
       
       <!-- Botones de Acción -->
@@ -80,7 +89,7 @@
           <span v-if="corteHistoria.filtrosAplicados.fecha_fin"> Hasta: {{ corteHistoria.filtrosAplicados.fecha_fin }}</span>
           <span v-if="corteHistoria.filtrosAplicados.folio_inicio"> | Folios del {{ corteHistoria.filtrosAplicados.folio_inicio }}</span>
           <span v-if="corteHistoria.filtrosAplicados.folio_fin"> al {{ corteHistoria.filtrosAplicados.folio_fin }}</span>
-          <span v-if="corteHistoria.filtrosAplicados.tipo"> | Tipo: {{ corteHistoria.filtrosAplicados.tipo }}</span>
+          <span v-if="corteHistoria.filtrosAplicados.tipos && corteHistoria.filtrosAplicados.tipos.length > 0"> | Tipo: {{ corteHistoria.filtrosAplicados.tipos.join(', ') }}</span>
         </div>
       </div>
       
@@ -93,7 +102,7 @@
           </div>
         </div>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-3" v-if="!corteHistoria.filtrosAplicados.tipos || corteHistoria.filtrosAplicados.tipos.length === 0 || corteHistoria.filtrosAplicados.tipos.includes('ticket')">
         <div class="card bg-success bg-opacity-10">
           <div class="card-body text-center">
             <h6 class="text-muted mb-1">Tickets ({{ corteHistoria.resumen.ticket.cantidad }})</h6>
@@ -101,7 +110,7 @@
           </div>
         </div>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-3" v-if="!corteHistoria.filtrosAplicados.tipos || corteHistoria.filtrosAplicados.tipos.length === 0 || corteHistoria.filtrosAplicados.tipos.includes('factura')">
         <div class="card bg-primary bg-opacity-10">
           <div class="card-body text-center">
             <h6 class="text-muted mb-1">Facturas ({{ corteHistoria.resumen.factura.cantidad }})</h6>
@@ -109,7 +118,7 @@
           </div>
         </div>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-3" v-if="!corteHistoria.filtrosAplicados.tipos || corteHistoria.filtrosAplicados.tipos.length === 0 || corteHistoria.filtrosAplicados.tipos.includes('ticket electronico')">
         <div class="card bg-warning bg-opacity-10">
           <div class="card-body text-center">
             <h6 class="text-muted mb-1">T. Electrónicos ({{ corteHistoria.resumen['ticket electronico'].cantidad }})</h6>

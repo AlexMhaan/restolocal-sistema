@@ -620,10 +620,17 @@ class Reportes extends ResourceController
                 $filtros_aplicados['folio_fin'] = (int)$data['folio_fin'];
             }
             
-            // Filtro por tipo de documento
-            if (!empty($data['tipo']) && in_array($data['tipo'], ['ticket', 'factura', 'ticket electronico'])) {
-                $builder->where('r.tipo', $data['tipo']);
-                $filtros_aplicados['tipo'] = $data['tipo'];
+            // Filtro por tipo de documento (soporta múltiples tipos)
+            // Acepta tanto 'tipos' (desde axios) como 'tipos[]' (desde URL directa del PDF)
+            $tiposPermitidos = ['ticket', 'factura', 'ticket electronico'];
+            $tiposRaw = $this->request->getVar('tipos') ?? $this->request->getVar('tipos[]');
+            if (!empty($tiposRaw)) {
+                $tiposRecibidos = is_array($tiposRaw) ? $tiposRaw : [$tiposRaw];
+                $tiposValidos = array_values(array_intersect($tiposRecibidos, $tiposPermitidos));
+                if (!empty($tiposValidos)) {
+                    $builder->whereIn('r.tipo', $tiposValidos);
+                    $filtros_aplicados['tipos'] = $tiposValidos;
+                }
             }
             
             // Ordenar por número de folio
@@ -674,6 +681,23 @@ class Reportes extends ResourceController
      */
     private function generarCorteHistoriaPDF($folios, $resumen, $filtros_aplicados)
     {
+        // Enriquecer cada folio con sus items (productos del pedido)
+        $db = \Config\Database::connect();
+        foreach ($folios as &$folio) {
+            $queryItems = $db->query("
+                SELECT
+                    pl.nombre AS descripcion,
+                    ip.cantidad AS cantidad,
+                    pl.precio AS precio_unitario,
+                    ip.cantidad * pl.precio AS importe
+                FROM item_pedidos ip
+                JOIN platillos pl ON pl.id = ip.id_platillo
+                WHERE ip.id_pedido = ?
+            ", [$folio['id_pedido']]);
+            $folio['items'] = $queryItems->getResultArray();
+        }
+        unset($folio);
+
         // Preparar datos para la vista
         $data = [
             'folios' => $folios,
@@ -1433,55 +1457,34 @@ class Reportes extends ResourceController
             $db = \Config\Database::connect();
             
             // ========================================
-            // REPORTES FISCALES A CONSERVAR
+            // TODOS LOS PEDIDOS DEL DÍA (ELIMINAR)
+            // ========================================
+            $todosLosPedidos = $db->query("
+                SELECT COUNT(DISTINCT id) as total
+                FROM pedidos
+                WHERE DATE(fecha) = ?
+            ", [$fecha])->getRowArray();
+            
+            // ========================================
+            // TODOS LOS ITEMS DEL DÍA (ELIMINAR)
+            // ========================================
+            $todosLosItems = $db->query("
+                SELECT COUNT(*) as total
+                FROM item_pedidos ip
+                INNER JOIN pedidos p ON p.id = ip.id_pedido
+                WHERE DATE(p.fecha) = ?
+            ", [$fecha])->getRowArray();
+            
+            // ========================================
+            // REPORTES FISCALES DEL DÍA (ELIMINAR)
             // ========================================
             $reportesFiscales = $db->query("
-                SELECT COUNT(*) as total, SUM(total_pedido) as monto_total
+                SELECT COUNT(*) as total
                 FROM reportes
                 WHERE DATE(fecha) = ?
                   AND tipo IN ('factura', 'ticket electronico')
                   AND numero > 0
                   AND estado = 'emitido'
-            ", [$fecha])->getRowArray();
-            
-            // ========================================
-            // PEDIDOS CON REPORTES FISCALES (CONSERVAR)
-            // ========================================
-            $pedidosFiscales = $db->query("
-                SELECT COUNT(DISTINCT p.id) as total
-                FROM pedidos p
-                INNER JOIN reportes r ON r.id_pedido = p.id
-                WHERE DATE(p.fecha) = ?
-                  AND r.tipo IN ('factura', 'ticket electronico')
-                  AND r.numero > 0
-                  AND r.estado = 'emitido'
-            ", [$fecha])->getRowArray();
-            
-            // ========================================
-            // PEDIDOS SIN REPORTES FISCALES (ELIMINAR)
-            // ========================================
-            $pedidosSinFiscales = $db->query("
-                SELECT COUNT(DISTINCT p.id) as total
-                FROM pedidos p
-                LEFT JOIN reportes r ON r.id_pedido = p.id 
-                  AND r.tipo IN ('factura', 'ticket electronico')
-                  AND r.numero > 0
-                WHERE DATE(p.fecha) = ?
-                  AND r.id IS NULL
-            ", [$fecha])->getRowArray();
-            
-            // ========================================
-            // ITEMS DE PEDIDOS SIN FISCALES (ELIMINAR)
-            // ========================================
-            $itemsEliminar = $db->query("
-                SELECT COUNT(*) as total
-                FROM item_pedidos ip
-                INNER JOIN pedidos p ON p.id = ip.id_pedido
-                LEFT JOIN reportes r ON r.id_pedido = p.id 
-                  AND r.tipo IN ('factura', 'ticket electronico')
-                  AND r.numero > 0
-                WHERE DATE(p.fecha) = ?
-                  AND r.id IS NULL
             ", [$fecha])->getRowArray();
             
             // ========================================
@@ -1518,15 +1521,13 @@ class Reportes extends ResourceController
                 'data' => [
                     'fecha' => $fecha,
                     'eliminados' => [
-                        'pedidos' => (int)$pedidosSinFiscales['total'],
-                        'items' => (int)$itemsEliminar['total'],
+                        'pedidos' => (int)$todosLosPedidos['total'],
+                        'items' => (int)$todosLosItems['total'],
+                        'reportes_fiscales' => (int)$reportesFiscales['total'],
                         'tickets_normales' => (int)$ticketsNormales['total'],
                         'resumenes' => (int)$resumenesCerrados['total']
                     ],
                     'conservados' => [
-                        'reportes_fiscales' => (int)$reportesFiscales['total'],
-                        'monto_fiscal' => (float)$reportesFiscales['monto_total'],
-                        'pedidos_fiscales' => (int)$pedidosFiscales['total'],
                         'folio_actual' => (int)$folioActual['numero']
                     ]
                 ]
@@ -1676,18 +1677,12 @@ class Reportes extends ResourceController
             // PASO 2: OBTENER IDs A ELIMINAR
             // ========================================
             
-            // IDs de pedidos sin reportes fiscales
-            $pedidosSinFiscales = $db->query("
-                SELECT p.id
-                FROM pedidos p
-                LEFT JOIN reportes r ON r.id_pedido = p.id 
-                  AND r.tipo IN ('factura', 'ticket electronico')
-                  AND r.numero > 0
-                WHERE DATE(p.fecha) = ?
-                  AND r.id IS NULL
+            // IDs de todos los pedidos del día
+            $todosPedidos = $db->query("
+                SELECT id FROM pedidos WHERE DATE(fecha) = ?
             ", [$fecha])->getResultArray();
             
-            $idsPedidosSinFiscales = array_column($pedidosSinFiscales, 'id');
+            $idsTodosPedidos = array_column($todosPedidos, 'id');
             
             // ========================================
             // PASO 3: ELIMINAR EN TRANSACCIÓN
@@ -1698,23 +1693,24 @@ class Reportes extends ResourceController
             $contadores = [
                 'items' => 0,
                 'tickets_normales' => 0,
+                'reportes_fiscales' => 0,
                 'pedidos' => 0,
                 'resumenes' => 0
             ];
             
             try {
-                // 1. Eliminar item_pedidos de pedidos sin fiscales
-                if (!empty($idsPedidosSinFiscales)) {
-                    $placeholders = implode(',', array_fill(0, count($idsPedidosSinFiscales), '?'));
-                    $result = $db->query("
+                // 1. Eliminar todos los item_pedidos del día
+                if (!empty($idsTodosPedidos)) {
+                    $placeholders = implode(',', array_fill(0, count($idsTodosPedidos), '?'));
+                    $db->query("
                         DELETE FROM item_pedidos
                         WHERE id_pedido IN ($placeholders)
-                    ", $idsPedidosSinFiscales);
+                    ", $idsTodosPedidos);
                     $contadores['items'] = $db->affectedRows();
                 }
                 
                 // 2. Eliminar reportes tipo ticket normal (numero=0)
-                $result = $db->query("
+                $db->query("
                     DELETE FROM reportes
                     WHERE DATE(fecha) = ?
                       AND tipo = 'ticket'
@@ -1722,21 +1718,29 @@ class Reportes extends ResourceController
                 ", [$fecha]);
                 $contadores['tickets_normales'] = $db->affectedRows();
                 
-                // 3. Eliminar pedidos sin fiscales
-                if (!empty($idsPedidosSinFiscales)) {
-                    $placeholders = implode(',', array_fill(0, count($idsPedidosSinFiscales), '?'));
-                    $result = $db->query("
+                // 3. Eliminar reportes fiscales (facturas y tickets electrónicos)
+                $db->query("
+                    DELETE FROM reportes
+                    WHERE DATE(fecha) = ?
+                      AND tipo IN ('factura', 'ticket electronico')
+                ", [$fecha]);
+                $contadores['reportes_fiscales'] = $db->affectedRows();
+                
+                // 4. Eliminar todos los pedidos del día
+                if (!empty($idsTodosPedidos)) {
+                    $placeholders = implode(',', array_fill(0, count($idsTodosPedidos), '?'));
+                    $db->query("
                         DELETE FROM pedidos
                         WHERE id IN ($placeholders)
-                    ", $idsPedidosSinFiscales);
+                    ", $idsTodosPedidos);
                     $contadores['pedidos'] = $db->affectedRows();
                 }
                 
-                // 4. Eliminar resumenes cerrados
-                $result = $db->query("DELETE FROM resumenes WHERE estado = 0");
+                // 5. Eliminar resumenes cerrados
+                $db->query("DELETE FROM resumenes WHERE estado = 0");
                 $contadores['resumenes'] = $db->affectedRows();
                 
-                // 5. Reiniciar AUTO_INCREMENT de pedidos
+                // 6. Reiniciar AUTO_INCREMENT de pedidos
                 $db->query("ALTER TABLE pedidos AUTO_INCREMENT = 1");
                 
                 $db->transComplete();
@@ -1754,24 +1758,6 @@ class Reportes extends ResourceController
             // ========================================
             // PASO 4: OBTENER DATOS CONSERVADOS
             // ========================================
-            
-            $reportesFiscales = $db->query("
-                SELECT COUNT(*) as total, SUM(total_pedido) as monto_total
-                FROM reportes
-                WHERE DATE(fecha) = ?
-                  AND tipo IN ('factura', 'ticket electronico')
-                  AND numero > 0
-                  AND estado = 'emitido'
-            ", [$fecha])->getRowArray();
-            
-            $pedidosFiscales = $db->query("
-                SELECT COUNT(DISTINCT p.id) as total
-                FROM pedidos p
-                INNER JOIN reportes r ON r.id_pedido = p.id
-                WHERE DATE(p.fecha) = ?
-                  AND r.tipo IN ('factura', 'ticket electronico')
-                  AND r.numero > 0
-            ", [$fecha])->getRowArray();
             
             $folioActual = $db->query("
                 SELECT numero FROM consecutivos WHERE tipo = 'num_consecutivo'
@@ -1792,9 +1778,6 @@ class Reportes extends ResourceController
                     'respaldo_path' => $respaldoPath,
                     'eliminados' => $contadores,
                     'conservados' => [
-                        'reportes_fiscales' => (int)$reportesFiscales['total'],
-                        'monto_fiscal' => (float)$reportesFiscales['monto_total'],
-                        'pedidos_fiscales' => (int)$pedidosFiscales['total'],
                         'folio_actual' => (int)$folioActual['numero']
                     ]
                 ]

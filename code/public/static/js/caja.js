@@ -23,7 +23,7 @@ const app = Vue.createApp({
           fecha_fin: '',
           folio_inicio: '',
           folio_fin: '',
-          tipo: ''
+          tipos: []
         },
         folios: [],
         resumen: {
@@ -63,8 +63,6 @@ const app = Vue.createApp({
       },
       // Variables para Exportar Excel
       exportExcel: {
-        fechaInicio: '',
-        fechaFin: '',
         descargando: false,
         mensaje: '',
         mensajeTipo: 'success'
@@ -919,8 +917,8 @@ const app = Vue.createApp({
         if (this.corteHistoria.filtros.folio_fin) {
           params.folio_fin = this.corteHistoria.filtros.folio_fin;
         }
-        if (this.corteHistoria.filtros.tipo) {
-          params.tipo = this.corteHistoria.filtros.tipo;
+        if (this.corteHistoria.filtros.tipos && this.corteHistoria.filtros.tipos.length > 0) {
+          params.tipos = this.corteHistoria.filtros.tipos;
         }
         
         // Llamar a la API
@@ -947,7 +945,7 @@ const app = Vue.createApp({
         fecha_fin: '',
         folio_inicio: '',
         folio_fin: '',
-        tipo: ''
+        tipos: []
       };
       this.corteHistoria.folios = [];
       this.corteHistoria.resumen = {
@@ -1028,8 +1026,10 @@ const app = Vue.createApp({
       if (this.corteHistoria.filtrosAplicados.folio_fin) {
         params.append('folio_fin', this.corteHistoria.filtrosAplicados.folio_fin);
       }
-      if (this.corteHistoria.filtrosAplicados.tipo) {
-        params.append('tipo', this.corteHistoria.filtrosAplicados.tipo);
+      if (this.corteHistoria.filtrosAplicados.tipos && this.corteHistoria.filtrosAplicados.tipos.length > 0) {
+        this.corteHistoria.filtrosAplicados.tipos.forEach(tipo => {
+          params.append('tipos[]', tipo);
+        });
       }
       
       // Abrir en nueva ventana
@@ -1240,16 +1240,11 @@ const app = Vue.createApp({
       this.exportExcel.descargando = true;
       this.exportExcel.mensaje = '';
       
-      // Construir URL con parámetros
-      let url = BASE_URL + 'api/reportes/exportarExcel?tipo=' + encodeURIComponent(tipo);
-      
-      if (this.exportExcel.fechaInicio) {
-        url += '&fecha_inicio=' + this.exportExcel.fechaInicio;
-      }
-      
-      if (this.exportExcel.fechaFin) {
-        url += '&fecha_fin=' + this.exportExcel.fechaFin;
-      }
+      // Construir URL con fecha de hoy
+      const hoy = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD en timezone local
+      let url = BASE_URL + 'api/reportes/exportarExcel?tipo=' + encodeURIComponent(tipo)
+        + '&fecha_inicio=' + hoy
+        + '&fecha_fin=' + hoy;
       
       // Descargar archivo
       fetch(url)
