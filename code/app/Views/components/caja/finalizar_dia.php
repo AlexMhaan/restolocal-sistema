@@ -14,16 +14,15 @@
       <hr>
       <p class="mb-2"><strong>Esta acción eliminará permanentemente:</strong></p>
       <ul class="mb-2">
-        <li>✅ Pedidos sin reportes fiscales</li>
-        <li>✅ Items de pedidos eliminados</li>
+        <li>✅ Todos los pedidos del día</li>
+        <li>✅ Todos los items de pedidos</li>
+        <li>✅ Facturas y tickets electrónicos (reportes fiscales)</li>
         <li>✅ Tickets normales (sin folio)</li>
         <li>✅ Resúmenes cerrados</li>
         <li>✅ Reinicio del contador de pedidos (AUTO_INCREMENT)</li>
       </ul>
       <p class="mb-2"><strong>Se CONSERVARÁ intacto:</strong></p>
       <ul class="mb-0">
-        <li>❌ Facturas y tickets electrónicos (reportes fiscales)</li>
-        <li>❌ Pedidos con reportes fiscales asociados</li>
         <li>❌ Consecutivo fiscal (continúa incrementando)</li>
         <li>❌ Usuarios, platillos, mesas, configuraciones</li>
       </ul>
@@ -85,12 +84,16 @@
             </h6>
             <ul class="list-group mb-3">
               <li class="list-group-item d-flex justify-content-between align-items-center">
-                Pedidos sin fiscales
+                Todos los pedidos
                 <span class="badge bg-danger rounded-pill">{{ finalizarDia.resumen.eliminados.pedidos }}</span>
               </li>
               <li class="list-group-item d-flex justify-content-between align-items-center">
                 Items de pedidos
                 <span class="badge bg-danger rounded-pill">{{ finalizarDia.resumen.eliminados.items }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Reportes fiscales
+                <span class="badge bg-danger rounded-pill">{{ finalizarDia.resumen.eliminados.reportes_fiscales }}</span>
               </li>
               <li class="list-group-item d-flex justify-content-between align-items-center">
                 Tickets normales
@@ -110,20 +113,12 @@
             </h6>
             <ul class="list-group mb-3">
               <li class="list-group-item d-flex justify-content-between align-items-center">
-                Reportes fiscales
-                <span class="badge bg-success rounded-pill">{{ finalizarDia.resumen.conservados.reportes_fiscales }}</span>
-              </li>
-              <li class="list-group-item d-flex justify-content-between align-items-center">
-                Pedidos con fiscales
-                <span class="badge bg-success rounded-pill">{{ finalizarDia.resumen.conservados.pedidos_fiscales }}</span>
-              </li>
-              <li class="list-group-item d-flex justify-content-between align-items-center">
-                Monto fiscal
-                <span class="badge bg-success rounded-pill">${{ formatPrecio(finalizarDia.resumen.conservados.monto_fiscal) }}</span>
-              </li>
-              <li class="list-group-item d-flex justify-content-between align-items-center">
                 Folio consecutivo
                 <span class="badge bg-primary rounded-pill">{{ finalizarDia.resumen.conservados.folio_actual }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Usuarios, platillos, mesas
+                <span class="badge bg-success rounded-pill">✓</span>
               </li>
             </ul>
           </div>
@@ -203,6 +198,7 @@
             <ul>
               <li>Pedidos: <strong>{{ finalizarDia.resultado.eliminados.pedidos }}</strong></li>
               <li>Items: <strong>{{ finalizarDia.resultado.eliminados.items }}</strong></li>
+              <li>Reportes fiscales: <strong>{{ finalizarDia.resultado.eliminados.reportes_fiscales }}</strong></li>
               <li>Tickets normales: <strong>{{ finalizarDia.resultado.eliminados.tickets_normales }}</strong></li>
               <li>Resúmenes: <strong>{{ finalizarDia.resultado.eliminados.resumenes }}</strong></li>
             </ul>
@@ -210,9 +206,7 @@
           <div class="col-md-6">
             <h6>Datos Conservados:</h6>
             <ul>
-              <li>Reportes fiscales: <strong>{{ finalizarDia.resultado.conservados.reportes_fiscales }}</strong></li>
-              <li>Monto fiscal: <strong>${{ formatPrecio(finalizarDia.resultado.conservados.monto_fiscal) }}</strong></li>
-              <li>Folio actual: <strong>{{ finalizarDia.resultado.conservados.folio_actual }}</strong></li>
+              <li>Folio consecutivo actual: <strong>{{ finalizarDia.resultado.conservados.folio_actual }}</strong></li>
             </ul>
           </div>
         </div>
